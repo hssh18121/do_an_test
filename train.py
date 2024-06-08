@@ -135,7 +135,7 @@ callbacks = [
 # Train the model
 history = model.fit(
     train_dataset,
-    epochs=150,
+    epochs=200,
     validation_data=val_dataset,
     callbacks=callbacks,
 )
