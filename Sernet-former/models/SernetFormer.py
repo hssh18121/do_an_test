@@ -76,6 +76,6 @@ def SERNetFormer(input_shape, num_classes):
 
 # Example usage
 input_shape = (256, 256, 3)
-num_classes = 21
+num_classes = 5
 model = SERNetFormer(input_shape, num_classes)
 model.summary()

@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras import layers, models, applications
-tf.compat.v1.disable_eager_execution()
+# tf.compat.v1.disable_eager_execution()
 
 # Helper function to create the Pyramid Pooling Module (PPM)
 def build_ppm(input_tensor, bin_sizes):
@@ -47,6 +47,8 @@ def UPerNet(input_shape=(512, 512, 3), num_classes=21):
     # Backbone network (e.g., ResNet50)
     backbone = applications.ResNet50(include_top=False, input_tensor=inputs)
     C3, C4, C5 = backbone.get_layer("conv3_block4_out").output, backbone.get_layer("conv4_block6_out").output, backbone.get_layer("conv5_block3_out").output
+    print("C3: ")
+    print(C3)
     
     # Pyramid Pooling Module (PPM) on the last feature map (C5)
     ppm = build_ppm(C5, bin_sizes=[1, 2, 4, 6])
@@ -69,8 +71,8 @@ def UPerNet(input_shape=(512, 512, 3), num_classes=21):
     return model
 
 # Instantiate and compile the model
-# model = UPerNet()
-# model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+model = UPerNet()
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-# # Summary of the model
-# model.summary()
+# Summary of the model
+model.summary()
