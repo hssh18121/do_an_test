@@ -39,8 +39,8 @@ def UPerNet(input_shape=(512, 512, 3), num_classes=21):
     inputs = tf.keras.Input(shape=input_shape)
     
     # Backbone network (ConvNeXt)
-    backbone = convnext.ConvNeXtBase(include_top=False, input_tensor=inputs, weights=None)
-    # backbone = convnext.ConvNeXtBase(include_top=False, input_tensor=inputs)
+    # backbone = convnext.ConvNeXtBase(include_top=False, input_tensor=inputs, weights=None)
+    backbone = convnext.ConvNeXtBase(include_top=False, input_tensor=inputs)
     # Select appropriate layers for FPN (Assume these are the layers)
     C3 = backbone.get_layer("convnext_base_stage_1_block_2_layernorm").output
     C4 = backbone.get_layer("convnext_base_stage_2_block_8_layernorm").output
