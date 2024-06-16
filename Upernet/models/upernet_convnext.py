@@ -35,7 +35,7 @@ def build_fpn(features):
     return layers.Concatenate()(fpn_outs)
 
 # Define the UPerNet model
-def UPerNet(input_shape=(512, 512, 3), num_classes=21):
+def UPerNet(input_shape=(512, 512, 3), num_classes=21, name_prefix="upernet"):
     inputs = tf.keras.Input(shape=input_shape)
     
     # Backbone network (ConvNeXt)
