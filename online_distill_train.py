@@ -9,7 +9,7 @@ import pandas as pd
 
 import sys
 # Add the parent directory of the 'models' directory to the sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'Upernet')))
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'Upernet')))
 
 import random
 import glob
@@ -18,7 +18,8 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import Image
-from models import upernet_convnext_improved
+from Upernet.models import upernet_convnext_improved
+from SegFormer.models import SegFormer_B3
 import segmentation_models as sm
 import albumentations as A
 
@@ -127,140 +128,24 @@ val_dataset = val_dataset.batch(4).map(_normalize)
 
 import logging
 
+logger = logging.getLogger(__name__)
+
 # Setup logging
-logging.basicConfig(filename='./result/online_distill/training_log.txt', level=logging.INFO,
+logging.basicConfig(filename='training.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
-pretrain_checkpoint_path = "./weights/imgnet_augmented_upernet_convnext_improved/cp.weights.h5"
+pretrain_upernet_checkpoint_path = "./weights/imgnet_augmented_upernet_convnext_improved/cp.weights.h5"
+pretrain_segformer_checkpoint_path = "./weights/augmented_segformer_B3_with_pretrain/cp.weights.h5"
 
 # Build two student models
 input_shape = (256, 256, 3)
 num_classes = 5
 student1 = upernet_convnext_improved.UPerNet(input_shape=input_shape, num_classes=num_classes, name_prefix="convnext1")
-student2 = upernet_convnext_improved.UPerNet(input_shape=input_shape, num_classes=num_classes, name_prefix="convnext2")
+student2 = SegFormer_B3(input_shape=input_shape, num_classes=num_classes)
 
-student1.load_weights(pretrain_checkpoint_path)
-student2.load_weights(pretrain_checkpoint_path)
+student1.load_weights(pretrain_upernet_checkpoint_path)
+student2.load_weights(pretrain_segformer_checkpoint_path)
 # Assuming UPerNetConvnext and UPerNet are defined somewhere
-
-# class KLDivergenceLoss(tf.keras.losses.Loss):
-#     def __init__(self, name="kl_divergence_loss"):
-#         super().__init__(name=name)
-
-#     def call(self, y_true, y_pred):
-#         y_true = tf.keras.backend.clip(y_true, 1e-10, 1)
-#         y_pred = tf.keras.backend.clip(y_pred, 1e-10, 1)
-#         return tf.keras.backend.sum(y_true * tf.keras.backend.log(y_true / y_pred), axis=-1)
-
-# dice_loss = sm.losses.DiceLoss() 
-# focal_loss = sm.losses.CategoricalFocalLoss()
-# total_loss = dice_loss + (2 * focal_loss)
-# kl_loss = KLDivergenceLoss()
-
-# # Custom combined loss function
-# def custom_combined_loss(y_true, y_pred, preds1, preds2):
-#     combined_preds = (preds1 + preds2) / 2.0
-#     kl_loss1 = kl_loss(combined_preds, preds1)
-#     kl_loss2 = kl_loss(combined_preds, preds2)
-#     return dice_loss(y_true, combined_preds) + (2 * focal_loss(y_true, combined_preds)) + kl_loss1 + kl_loss2
-
-# # Optimizers
-# optimizer1 = tf.keras.optimizers.Adam()
-# optimizer2 = tf.keras.optimizers.Adam()
-
-# # Define a custom training loop
-# epochs = 10
-# best_val_loss = np.inf
-# best_weights_student1 = None
-# best_weights_student2 = None
-
-# for epoch in range(epochs):
-#     student1_epoch_loss = []
-#     student2_epoch_loss = []
-#     student1_epoch_iou = []
-#     student2_epoch_iou = []
-
-#     for step, ((images_orig, labels_orig), (images_aug, labels_aug)) in enumerate(zip(train_dataset, augmented_train_dataset)):
-#         print(midpoint)
-#         with tf.GradientTape(persistent=True) as tape:
-#             # Forward pass through student1 with original dataset
-#             preds1 = student1(images_orig, training=True)
-#             # Forward pass through student2 with augmented dataset
-#             preds2 = student2(images_aug, training=True)
-
-#             # Combined predictions (use appropriate images for comparison if needed)
-#             combined_preds = (preds1 + preds2) / 2.0
-
-#             # Compute losses (use original labels for preds1 and augmented labels for preds2 if needed)
-#             loss1 = custom_combined_loss(labels_orig, preds1, preds1, preds2)
-#             loss2 = custom_combined_loss(labels_aug, preds2, preds1, preds2)
-
-#             print(f"Loss1: {loss1}")
-#             print(f"Loss2: {loss2}")
-
-#             total_loss_value = loss1 + loss2
-
-#         # Compute gradients and update weights for both models
-#         grads1 = tape.gradient(total_loss_value, student1.trainable_variables)
-#         grads2 = tape.gradient(total_loss_value, student2.trainable_variables)
-
-#         optimizer1.apply_gradients(zip(grads1, student1.trainable_variables))
-#         optimizer2.apply_gradients(zip(grads2, student2.trainable_variables))
-
-#         student1_epoch_loss.append(loss1.numpy())
-#         student2_epoch_loss.append(loss2.numpy())
-
-#         student1_epoch_iou.append(sm.metrics.iou_score(labels_orig, preds1).numpy())
-#         student2_epoch_iou.append(sm.metrics.iou_score(labels_aug, preds2).numpy())
-
-#     # Calculate and print metrics for the epoch
-#     student1_mean_loss = np.mean(student1_epoch_loss)
-#     student2_mean_loss = np.mean(student2_epoch_loss)
-#     student1_mean_iou = np.mean(student1_epoch_iou)
-#     student2_mean_iou = np.mean(student2_epoch_iou)
-
-#     print(f"Epoch {epoch+1}/{epochs}, Student1 Loss: {student1_mean_loss}, Student1 IoU: {student1_mean_iou}")
-#     print(f"Epoch {epoch+1}/{epochs}, Student2 Loss: {student2_mean_loss}, Student2 IoU: {student2_mean_iou}")
-
-#     logging.info(f"Epoch {epoch+1}/{epochs}, Student1 Loss: {student1_mean_loss}, Student1 IoU: {student1_mean_iou}")
-#     logging.info(f"Epoch {epoch+1}/{epochs}, Student2 Loss: {student2_mean_loss}, Student2 IoU: {student2_mean_iou}")
-
-#     # Validation step
-#     val_losses = []
-#     val_iou_scores = []
-#     for images, labels in val_dataset:
-#         preds1 = student1(images, training=False)
-#         preds2 = student2(images, training=False)
-#         combined_preds = (preds1 + preds2) / 2.0
-#         val_loss = custom_combined_loss(labels, combined_preds, preds1, preds2)
-#         val_losses.append(val_loss.numpy())
-#         val_iou_scores.append(sm.metrics.iou_score(labels, combined_preds).numpy())
-
-#     val_mean_loss = np.mean(val_losses)
-#     val_iou = np.mean(val_iou_scores)
-#     print(f"Epoch {epoch+1}/{epochs}, Validation Loss: {val_mean_loss}, Validation IoU: {val_iou}")
-#     logging.info(f"Epoch {epoch+1}/{epochs}, Validation Loss: {val_mean_loss}, Validation IoU: {val_iou}")
-
-#     # Check for the lowest validation loss and save the weights
-#     if val_mean_loss < best_val_loss:
-#         best_val_loss = val_mean_loss
-#         best_weights_student1 = student1.get_weights()
-#         best_weights_student2 = student2.get_weights()
-#         print(f"New best validation loss: {val_mean_loss}. Saving the weights")
-#         logging.info(f"New best validation loss: {val_mean_loss}. Saving the weights")
-#         # Save the best weights
-#         student1.set_weights(best_weights_student1)
-#         student1.save_weights('./weights/online_distill/student1_best_weights.h5')
-#         student2.set_weights(best_weights_student2)
-#         student2.save_weights('./weights/online_distill/student2_best_weights.h5')
-#     else:
-#         print(f"Val loss did not improve from {val_mean_loss}.")
-#         logging.info(f"Val loss did not improve from {val_mean_loss}.")
-from tensorflow.keras.layers import Dense, Input
-dice_loss = sm.losses.DiceLoss() 
-focal_loss = sm.losses.CategoricalFocalLoss()
-optimizer1 = tf.keras.optimizers.Adam()
-optimizer2 = tf.keras.optimizers.Adam()
 
 class KLDivergenceLoss(tf.keras.losses.Loss):
     def __init__(self, name="kl_divergence_loss"):
@@ -271,90 +156,141 @@ class KLDivergenceLoss(tf.keras.losses.Loss):
         y_pred = tf.keras.backend.clip(y_pred, 1e-10, 1)
         return tf.keras.backend.sum(y_true * tf.keras.backend.log(y_true / y_pred), axis=-1)
 
+dice_loss = sm.losses.DiceLoss() 
+focal_loss = sm.losses.CategoricalFocalLoss()
+total_loss = dice_loss + (2 * focal_loss)
 kl_loss = KLDivergenceLoss()
 
-class AttentionModule(tf.keras.layers.Layer):
-    def __init__(self):
-        super(AttentionModule, self).__init__()
-        self.mlp = tf.keras.Sequential([
-            Dense(128, activation='relu'),
-            Dense(1, activation='sigmoid')
-        ])
+# Define trainable alphas
+alphas = tf.Variable([0.5, 0.5], dtype=tf.float32, trainable=True)
 
-    def call(self, F1, F2, F3):
-        attention_weights = self.mlp(F1) + self.mlp(F2) + self.mlp(F3)
-        attention_weights = tf.nn.sigmoid(attention_weights)
-        return attention_weights
-
-def extract_features(P, G):
-    # F1: Confidence in ground truth class
-    F1 = tf.reduce_max(P * G, axis=-1, keepdims=True)
-
-    # zk: Difference from the ground truth class confidence
-    zk = P - tf.reduce_max(P * G, axis=-1, keepdims=True)
+# Custom combined loss function
+# Custom combined loss function
+def custom_combined_loss(y_true, y_pred, preds1, preds2, alphas):
+    # Calculate the weighted sum of preds1 and preds2
+    combined_preds = alphas[0] * preds1 + alphas[1] * preds2
+    # Ensure the weights sum to 1 and are non-negative
+    combined_preds = tf.clip_by_value(combined_preds, 1e-10, 1.0)
+    combined_preds = combined_preds / tf.reduce_sum(combined_preds, axis=-1, keepdims=True)
     
-    # F2: Magnitude of differences
-    F2 = tf.reduce_mean(tf.nn.relu(-zk), axis=-1, keepdims=True)
-    
-    # F3: Number of classes with smaller confidence
-    F3 = tf.reduce_mean(tf.nn.relu(-zk) / (-zk + tf.keras.backend.epsilon()), axis=-1, keepdims=True)
-    
-    return F1, F2, F3
+    kl_loss_value = kl_loss(combined_preds, y_pred)
+    return dice_loss(y_true, y_pred) + (2 * focal_loss(y_true, y_pred)) + kl_loss_value
 
-def custom_combined_loss(y_true, y_pred, preds1, preds2, attention_weights):
-    combined_preds = attention_weights * preds1 + (1 - attention_weights) * preds2
-    # kl_loss1 = kl_loss(y_true, preds1)
-    # kl_loss2 = kl_loss(y_true, preds2)
-    return dice_loss(y_true, combined_preds) + (2 * focal_loss(y_true, combined_preds))
 
-# Build the attention module
-attention_module = AttentionModule()
+# Optimizers
+optimizer1 = tf.keras.optimizers.Adam()
+optimizer2 = tf.keras.optimizers.Adam()
 
-# Custom training loop
-epochs = 10
-best_val_loss = np.inf
+alpha_optimizer = tf.keras.optimizers.Adam()
+
+# Define a custom training loop
+epochs = 30
+best_val_loss1 = np.inf
+best_val_loss2 = np.inf
+best_weights_student1 = None
+best_weights_student2 = None
 
 for epoch in range(epochs):
-    for step, ((images_orig, labels_orig), (images_aug, labels_aug)) in enumerate(zip(train_dataset, augmented_train_dataset)):
+    student1_epoch_loss = []
+    student2_epoch_loss = []
+    student1_epoch_iou = []
+    student2_epoch_iou = []
+
+    for step, (images_orig, labels_orig) in enumerate(train_dataset):
+        print(f"step {step}")
         with tf.GradientTape(persistent=True) as tape:
+            tape.watch(alphas)  # Ensure alphas is watched
+
             # Forward pass through student1 with original dataset
             preds1 = student1(images_orig, training=True)
             # Forward pass through student2 with augmented dataset
-            preds2 = student2(images_aug, training=True)
-            
-            # Compute features
-            F1, F2, F3 = extract_features(preds1, labels_orig)
-            
-            # Compute attention weights
-            attention_weights = attention_module(F1, F2, F3)
-            
+            preds2 = student2(images_orig, training=True)
+
             # Compute losses
-            loss1 = custom_combined_loss(labels_orig, preds1, preds1, preds2, attention_weights)
-            loss2 = custom_combined_loss(labels_aug, preds2, preds1, preds2, attention_weights)
+            loss1 = custom_combined_loss(labels_orig, preds1, preds1, preds2, alphas)
+            loss2 = custom_combined_loss(labels_orig, preds2, preds1, preds2, alphas)
+
             print(f"Loss1: {loss1}")
             print(f"Loss2: {loss2}")
+
             total_loss = loss1 + loss2
-        
-        # Compute gradients and update weights
-        grads1 = tape.gradient(total_loss, student1.trainable_variables)
-        grads2 = tape.gradient(total_loss, student2.trainable_variables)
+
+
+        # Compute gradients and update weights for both models
+        grads1 = tape.gradient(loss1, student1.trainable_variables)
+        grads2 = tape.gradient(loss2, student2.trainable_variables)
+
+        alpha_grads = tape.gradient(total_loss, [alphas])
+        # print(alpha_grads)
+
         optimizer1.apply_gradients(zip(grads1, student1.trainable_variables))
         optimizer2.apply_gradients(zip(grads2, student2.trainable_variables))
-        
+
+        if alpha_grads[0] is not None:
+            alpha_optimizer.apply_gradients(zip(alpha_grads, [alphas]))
+
+        student1_epoch_loss.append(loss1.numpy())
+        student2_epoch_loss.append(loss2.numpy())
+
+    # Calculate and print metrics for the epoch
+    student1_mean_loss = np.mean(student1_epoch_loss)
+    student2_mean_loss = np.mean(student2_epoch_loss)
+
+    print(f"Epoch {epoch+1}/{epochs}, Student1 Loss: {student1_mean_loss}")
+    print(f"Epoch {epoch+1}/{epochs}, Student2 Loss: {student2_mean_loss}")
+    print(f"Epoch {epoch+1}/{epochs}, Alpha vals: {alphas[0]}, {alphas[1]}")
+
+    logging.info(f"Epoch {epoch+1}/{epochs}, Student1 Distill Loss: {student1_mean_loss}")
+    logging.info(f"Epoch {epoch+1}/{epochs}, Student2 Distill Loss: {student2_mean_loss}")
+
     # Validation step
-    val_losses = []
+    val_losses1 = []
+    val_losses2 = []
+    val_iou_scores1 = []
+    val_iou_scores2 = []
+
     for images, labels in val_dataset:
         preds1 = student1(images, training=False)
         preds2 = student2(images, training=False)
-        F1, F2, F3 = extract_features(preds1, labels)
-        attention_weights = attention_module(F1, F2, F3)
-        val_loss = custom_combined_loss(labels, preds1, preds1, preds2, attention_weights)
-        val_losses.append(val_loss.numpy())
+        # combined_preds = (preds1 + preds2) / 2.0
+        val_loss1 = dice_loss(labels, preds1, per_image=True) + (2 * focal_loss(labels, preds1, per_image=True))
+        val_losses1.append(val_loss1.numpy())
+
+        val_loss2 = dice_loss(labels, preds2, per_image=True) + (2 * focal_loss(labels, preds2, per_image=True))
+        val_losses2.append(val_loss2.numpy())
+
+        val_iou_scores1.append(sm.metrics.iou_score(labels, preds1).numpy())
+        val_iou_scores2.append(sm.metrics.iou_score(labels, preds2).numpy())
+
+    val_mean_loss1 = np.mean(val_losses1)
+    val_mean_loss2 = np.mean(val_losses2)
+
+    val_iou1 = np.mean(val_iou_scores1)
+    val_iou2 = np.mean(val_iou_scores2)
+
+    print(f"Epoch {epoch+1}/{epochs}, Student 1. Validation Loss: {val_mean_loss1}, Validation IoU: {val_iou1}")
+    print(f"Epoch {epoch+1}/{epochs}, Student 2. Validation Loss: {val_mean_loss2}, Validation IoU: {val_iou2}")
+    logging.info(f"Epoch {epoch+1}/{epochs}, Student 1. Validation Loss: {val_mean_loss1}, Validation IoU: {val_iou1}")
+    logging.info(f"Epoch {epoch+1}/{epochs}, Student 2. Validation Loss: {val_mean_loss2}, Validation IoU: {val_iou2}")
+
+    # Check for the lowest validation loss and save the weights
+    if val_mean_loss1 < best_val_loss1:
+        best_val_loss1 = val_mean_loss1
+        best_weights_student1 = student1.get_weights()
+        print(f"New best validation loss of student1: {val_mean_loss1}. Saving the weights")
+        logging.info(f"New best validation loss: {val_mean_loss1}. Saving the weights")
+        # Save the best weights
+        student1.set_weights(best_weights_student1)
+        student1.save_weights('./weights/online_distill/student1_best_weights.h5')
         
-    val_mean_loss = np.mean(val_losses)
-    print(f"Epoch {epoch+1}/{epochs}, Validation Loss: {val_mean_loss}")
-    if val_mean_loss < best_val_loss:
-        best_val_loss = val_mean_loss
-        student1.save_weights('./weights/student1_best_weights.h5')
-        student2.save_weights('./weights/student2_best_weights.h5')
-        print("New best validation loss, saving weights.")
+    if val_mean_loss2 < best_val_loss2:
+        best_val_loss2 = val_mean_loss2
+        best_weights_student2 = student2.get_weights()
+        print(f"New best validation loss: {val_mean_loss2}. Saving the weights")
+        logging.info(f"New best validation loss: {val_mean_loss2}. Saving the weights")
+        # Save the best weights
+        student2.set_weights(best_weights_student2)
+        student2.save_weights('./weights/online_distill/student2_best_weights.h5')
+
+        
+

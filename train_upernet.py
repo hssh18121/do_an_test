@@ -18,7 +18,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import Image
-from models import upernet_convnext_improved
+from models import upernet_convnext_tiny
 import segmentation_models as sm
 import albumentations as A
 
@@ -114,28 +114,30 @@ train_dataset = combined_train_dataset.batch(16).map(_normalize)
 val_dataset = val_dataset.batch(16).map(_normalize)
 
 # Path to save model checkpoint
-checkpoint_path = "./weights/imgnet_augmented_upernet_convnext_improved/cp.weights.h5"
+checkpoint_path = "./weights/best_model3/cp.weights.h5"
 
 # Pretrain path
-# pretrain_path = "./pretrain_weights/segformer_B5/cp.weights.h5"
+pretrain_path = "./weights/imgnet_augmented_upernet_convnext_tiny_with_pretrain/cp.weights.h5"
 
-dice_loss = sm.losses.DiceLoss() 
-focal_loss = sm.losses.CategoricalFocalLoss()
+dice_loss = sm.losses.DiceLoss(class_weights=[0.1, 0.15, 0.15, 0.35, 0.25]) 
+focal_loss = sm.losses.CategoricalFocalLoss(gamma=5.0)
 total_loss = dice_loss + (2 * focal_loss)
 
 # Initialize and compile the model
-model = upernet_convnext_improved.UPerNet(input_shape=(256, 256, 3), num_classes=5)
+model = upernet_convnext_tiny.UPerNet(input_shape=(256, 256, 3), num_classes=5)
 model.compile('Adam', loss=total_loss, metrics=[sm.metrics.iou_score])
 
-# model.load_weights(pretrain_path)
+model.load_weights(pretrain_path)
 
 # Define callbacks
 callbacks = [
+    tf.keras.callbacks.EarlyStopping(patience=50, monitor='val_loss'),
     tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                        monitor='val_loss',
                                        save_best_only=True,
                                        save_weights_only=True,
-                                       verbose=1)
+                                       verbose=1),
+    tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=10, min_lr=1e-6, verbose=1)
 ]
 
 # Train the model
@@ -159,7 +161,7 @@ plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
 plt.show()
-plt.savefig('./result/imgnet_augmented_upernet_convnext_improved/loss.png')
+plt.savefig('./result/best_model3/loss.png')
 plt.clf()  # Clear the current figure
 
 acc = history.history['iou_score']
@@ -171,4 +173,4 @@ plt.xlabel('Epochs')
 plt.ylabel('Accuracy')
 plt.legend()
 plt.show()
-plt.savefig('./result/imgnet_augmented_upernet_convnext_improved/mean_iou.png')
+plt.savefig('./result/best_model3/mean_iou.png')
