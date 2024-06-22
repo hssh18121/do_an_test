@@ -117,9 +117,9 @@ val_dataset = val_dataset.batch(16).map(_normalize)
 checkpoint_path = "./weights/best_model3/cp.weights.h5"
 
 # Pretrain path
-pretrain_path = "./weights/imgnet_augmented_upernet_convnext_tiny_with_pretrain/cp.weights.h5"
+pretrain_path = "./weights/imgnet_augmented_upernet_convnext_tiny/cp.weights.h5"
 
-dice_loss = sm.losses.DiceLoss(class_weights=[0.1, 0.15, 0.15, 0.35, 0.25]) 
+dice_loss = sm.losses.DiceLoss(class_weights=[0.1, 0.1, 0.1, 0.45, 0.25]) 
 focal_loss = sm.losses.CategoricalFocalLoss(gamma=5.0)
 total_loss = dice_loss + (2 * focal_loss)
 
@@ -131,13 +131,13 @@ model.load_weights(pretrain_path)
 
 # Define callbacks
 callbacks = [
-    tf.keras.callbacks.EarlyStopping(patience=50, monitor='val_loss'),
+    tf.keras.callbacks.EarlyStopping(patience=40, monitor='val_loss'),
     tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                        monitor='val_loss',
                                        save_best_only=True,
                                        save_weights_only=True,
                                        verbose=1),
-    tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=10, min_lr=1e-6, verbose=1)
+    tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=8, min_lr=1e-6, verbose=1)
 ]
 
 # Train the model
