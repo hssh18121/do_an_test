@@ -124,8 +124,8 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(filename='training.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
-teacher_checkpoint_path = "./weights/best_model2/cp.weights.h5"
-# student_checkpoint_path = "./weights/augmented_segformer_B3_with_pretrain/cp.weights.h5"
+teacher_checkpoint_path = "./weights/best_model3/cp.weights.h5"
+student_checkpoint_path = "./weights/offline_distill/cp.student2.h5"
 
 # Build two student models
 input_shape = (384, 384, 3)
@@ -134,6 +134,7 @@ teacher = upernet_convnext_tiny.UPerNet(input_shape=input_shape, num_classes=num
 student = sm.PSPNet('resnet18', classes=5, activation='softmax')
 
 teacher.load_weights(teacher_checkpoint_path)
+student.load_weights(student_checkpoint_path)
 
 # Assuming UPerNetConvnext and UPerNet are defined somewhere
 
@@ -165,7 +166,7 @@ optimizer = tf.keras.optimizers.Adam()
 
 
 # Define a custom training loop
-epochs = 200
+epochs = 140
 best_val_loss = np.inf
 best_weights_student = None
 
@@ -217,7 +218,7 @@ for epoch in range(epochs):
 
     val_iou = np.mean(val_iou_scores)
 
-    print(f"Epoch {epoch+1}/{epochs}, Student 1. Validation Loss: {val_mean_loss}, Validation IoU: {val_iou}")
+    print(f"Epoch {epoch+1}/{epochs}, Student. Validation Loss: {val_mean_loss}, Validation IoU: {val_iou}")
     logging.info(f"Epoch {epoch+1}/{epochs}, Student. Validation Loss: {val_mean_loss}, Validation IoU: {val_iou}")
 
 
@@ -229,7 +230,7 @@ for epoch in range(epochs):
         logging.info(f"New best validation loss: {val_mean_loss}. Saving the weights")
         # Save the best weights
         student.set_weights(best_weights_student)
-        student.save_weights('./weights/offline_distill/cp.weights.h5')
+        student.save_weights('./weights/offline_distill/cp.student2.h5')
 
         
 
