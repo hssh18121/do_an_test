@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import Image
 from Upernet.models import upernet_convnext_tiny
-from SegFomer.models import SegFormer_B0
+from SegFormer.models import SegFormer_B0
 import segmentation_models as sm
 import albumentations as A
 
@@ -113,9 +113,9 @@ def _normalize(X_batch, y_batch):
 augmented_train_dataset = train_dataset.map(tf_augment_data)
 combined_train_dataset = train_dataset.concatenate(augmented_train_dataset)
 
-train_dataset = combined_train_dataset.map(_normalize).batch(8)
+train_dataset = combined_train_dataset.map(_normalize).batch(16)
 
-val_dataset = val_dataset.map(_normalize).batch(8)
+val_dataset = val_dataset.map(_normalize).batch(16)
 
 import logging
 
@@ -132,7 +132,7 @@ student_checkpoint_path = "./weights/offline_distill/cp.segformer_student1.h5"
 input_shape = (256, 256, 3)
 num_classes = 5
 teacher = upernet_convnext_tiny.UPerNet(input_shape=input_shape, num_classes=num_classes)
-student = sm.PSPNet('resnet18', classes=5, activation='softmax')
+student =  SegFormer_B0(input_shape = (256,256,3), num_classes = 5)
 
 teacher.load_weights(teacher_checkpoint_path)
 # student.load_weights(student_checkpoint_path)
@@ -176,7 +176,7 @@ for epoch in range(epochs):
     student_epoch_iou = []
 
     for step, (images_orig, labels_orig) in enumerate(train_dataset):
-        print(f"step {step}")
+        # print(f"step {step}")
         with tf.GradientTape(persistent=True) as tape:
 
             # Forward pass through student with original dataset
@@ -186,7 +186,7 @@ for epoch in range(epochs):
             # Compute losses
             loss = custom_combined_loss(labels_orig, student_pred, teacher_pred)
 
-            print(f"Loss: {loss}")
+            # print(f"Loss: {loss}")
 
 
         # Compute gradients and update weights for both models
