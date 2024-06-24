@@ -1,3 +1,4 @@
+
 advanced-segmentation-structure
 
 bk-isut-dataset
@@ -18,3 +19,5 @@ TensorFlow-Advanced-Segmentation-Models
 weights
 
 pretrain_weights
+
+__pycache__/

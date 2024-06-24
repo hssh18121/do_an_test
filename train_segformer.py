@@ -18,7 +18,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import Image
-from models import SegFormer_B3
+from models import SegFormer_B0
 import segmentation_models as sm
 import albumentations as A
 
@@ -108,7 +108,7 @@ train_dataset = combined_train_dataset.map(_normalize).batch(16)
 val_dataset = val_dataset.batch(16).map(_normalize)
 
 # Path to save model checkpoint
-checkpoint_path = "./weights/augmented_segformer_B3/cp.weights.h5"
+checkpoint_path = "./weights/augmented_segformer_B0/cp.weights.h5"
 
 # Pretrain path
 # pretrain_path = "./pretrain_weights/segformer_B5/cp.weights.h5"
@@ -118,7 +118,7 @@ focal_loss = sm.losses.CategoricalFocalLoss()
 total_loss = dice_loss + (2 * focal_loss)
 
 # Initialize and compile the model
-model = SegFormer_B3(input_shape=(256, 256, 3), num_classes=5)
+model = SegFormer_B0(input_shape=(256, 256, 3), num_classes=5)
 model.compile('Adam', loss=total_loss, metrics=[sm.metrics.iou_score])
 
 # model.load_weights(pretrain_path)
@@ -153,7 +153,7 @@ plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
 plt.show()
-plt.savefig('./result/augmented_segformer_B3/loss.png')
+plt.savefig('./result/augmented_segformer_B0/loss.png')
 plt.clf()  # Clear the current figure
 
 acc = history.history['iou_score']
@@ -165,4 +165,4 @@ plt.xlabel('Epochs')
 plt.ylabel('Accuracy')
 plt.legend()
 plt.show()
-plt.savefig('./result/augmented_segformer_B3/mean_iou.png')
+plt.savefig('./result/augmented_segformer_B0/mean_iou.png')

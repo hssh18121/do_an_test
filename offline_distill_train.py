@@ -22,8 +22,8 @@ from Upernet.models import upernet_convnext_tiny
 import segmentation_models as sm
 import albumentations as A
 
-# retval = os.getcwd()
-# print( "Thu muc dang lam viec hien tai la %s" % retval)
+# Enable mixed precision
+# tf.keras.mixed_precision.set_global_policy('mixed_float16')
 
 # Paths to dataset files
 save_train_image_dataset_path = './bk-isut-dataset/train_image_dataset.npy'
@@ -40,7 +40,6 @@ X_test = np.load(save_test_image_dataset_path, mmap_mode='c')
 y_train = np.load(save_train_mask_image_dataset_path, mmap_mode='c')
 y_val = np.load(save_val_mask_image_dataset_path, mmap_mode='c')
 y_test = np.load(save_test_mask_image_dataset_path, mmap_mode='c')
-
 
 
 # Create TensorFlow datasets
@@ -114,7 +113,8 @@ augmented_train_dataset = train_dataset.map(tf_augment_data)
 combined_train_dataset = train_dataset.concatenate(augmented_train_dataset)
 
 train_dataset = combined_train_dataset.map(_normalize).batch(8)
-val_dataset = val_dataset.batch(8).map(_normalize)
+
+val_dataset = val_dataset.map(_normalize).batch(8)
 
 import logging
 
@@ -134,7 +134,7 @@ teacher = upernet_convnext_tiny.UPerNet(input_shape=input_shape, num_classes=num
 student = sm.PSPNet('resnet18', classes=5, activation='softmax')
 
 teacher.load_weights(teacher_checkpoint_path)
-student.load_weights(student_checkpoint_path)
+# student.load_weights(student_checkpoint_path)
 
 # Assuming UPerNetConvnext and UPerNet are defined somewhere
 
@@ -166,7 +166,7 @@ optimizer = tf.keras.optimizers.Adam()
 
 
 # Define a custom training loop
-epochs = 140
+epochs = 200
 best_val_loss = np.inf
 best_weights_student = None
 
@@ -175,7 +175,7 @@ for epoch in range(epochs):
     student_epoch_iou = []
 
     for step, (images_orig, labels_orig) in enumerate(train_dataset):
-        # print(f"step {step}")
+        print(f"step {step}")
         with tf.GradientTape(persistent=True) as tape:
 
             # Forward pass through student with original dataset
@@ -185,7 +185,7 @@ for epoch in range(epochs):
             # Compute losses
             loss = custom_combined_loss(labels_orig, student_pred, teacher_pred)
 
-            # print(f"Loss: {loss}")
+            print(f"Loss: {loss}")
 
 
         # Compute gradients and update weights for both models
@@ -230,7 +230,7 @@ for epoch in range(epochs):
         logging.info(f"New best validation loss: {val_mean_loss}. Saving the weights")
         # Save the best weights
         student.set_weights(best_weights_student)
-        student.save_weights('./weights/offline_distill/cp.student2.h5')
+        student.save_weights('./weights/offline_distill/cp.student3.h5')
 
         
 

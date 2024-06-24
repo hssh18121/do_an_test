@@ -108,8 +108,8 @@ def _normalize(X_batch, y_batch):
 augmented_train_dataset = train_dataset.map(tf_augment_data)
 combined_train_dataset = train_dataset.concatenate(augmented_train_dataset)
 
-train_dataset = combined_train_dataset.map(_normalize).batch(16)
-val_dataset = val_dataset.batch(16).map(_normalize)
+train_dataset = combined_train_dataset.map(_normalize).batch(8)
+val_dataset = val_dataset.batch(8).map(_normalize)
 
 # Path to save model checkpoint
 checkpoint_path = "./weights/augmented_pspnet_resnet18/cp.weights.h5"
@@ -125,7 +125,7 @@ total_loss = dice_loss + (2 * focal_loss)
 model = sm.PSPNet('resnet18', classes=5, activation='softmax')
 model.compile('Adam', loss=total_loss, metrics=[sm.metrics.iou_score],)
 
-# model.load_weights(pretrain_path)
+model.load_weights(checkpoint_path)
 
 # Define callbacks
 callbacks = [
@@ -139,7 +139,7 @@ callbacks = [
 # Train the model
 history = model.fit(
     train_dataset,
-    epochs=200,
+    epochs=170,
     validation_data=val_dataset,
     callbacks=callbacks,
 )
