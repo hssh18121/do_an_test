@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import Image
 from Upernet.models import upernet_convnext_tiny
+from SegFomer.models import SegFormer_B0
 import segmentation_models as sm
 import albumentations as A
 
@@ -95,14 +96,14 @@ def augment_data(image, mask):
 # Wrap the augmentation function for TensorFlow
 def tf_augment_data(image, mask):
     aug_img, aug_mask = tf.numpy_function(func=augment_data, inp=[image, mask], Tout=[tf.uint8, tf.uint8])
-    aug_img.set_shape((384, 384, 3))
-    aug_mask.set_shape((384, 384, 1))
+    aug_img.set_shape((256, 256, 3))
+    aug_mask.set_shape((256, 256, 1))
     return aug_img, aug_mask
 
 def _normalize(X_batch, y_batch):
     # For PSPNet only
-    X_batch = tf.image.resize(X_batch, (384, 384))
-    y_batch = tf.image.resize(y_batch, (384, 384))
+    X_batch = tf.image.resize(X_batch, (256, 256))
+    y_batch = tf.image.resize(y_batch, (256, 256))
 
     X_batch = tf.cast(X_batch, tf.float32)
     y_batch = tf.cast(y_batch, tf.float32)
@@ -125,10 +126,10 @@ logging.basicConfig(filename='training.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 teacher_checkpoint_path = "./weights/best_model3/cp.weights.h5"
-student_checkpoint_path = "./weights/offline_distill/cp.student2.h5"
+student_checkpoint_path = "./weights/offline_distill/cp.segformer_student1.h5"
 
 # Build two student models
-input_shape = (384, 384, 3)
+input_shape = (256, 256, 3)
 num_classes = 5
 teacher = upernet_convnext_tiny.UPerNet(input_shape=input_shape, num_classes=num_classes)
 student = sm.PSPNet('resnet18', classes=5, activation='softmax')
@@ -230,7 +231,7 @@ for epoch in range(epochs):
         logging.info(f"New best validation loss: {val_mean_loss}. Saving the weights")
         # Save the best weights
         student.set_weights(best_weights_student)
-        student.save_weights('./weights/offline_distill/cp.student3.h5')
+        student.save_weights('./weights/offline_distill/cp.segformer_student1.h5')
 
         
 
