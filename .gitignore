@@ -11,9 +11,6 @@ crop_output
 
 save_data_path
 
-SegFormer-tf
-SegFormer
-
 TensorFlow-Advanced-Segmentation-Models
 
 weights

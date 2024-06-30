@@ -1,0 +1,3 @@
+[submodule "SegFormer"]
+	path = SegFormer
+	url = https://github.com/hssh18121/SegFormer-tf
