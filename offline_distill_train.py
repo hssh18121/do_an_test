@@ -8,8 +8,6 @@ import pandas as pd
 
 
 import sys
-# Add the parent directory of the 'models' directory to the sys.path
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'Upernet')))
 
 import random
 import glob
@@ -18,7 +16,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import Image
-from Upernet.models import upernet_convnext_tiny
+from Upernet.models import upernet_convnext_tiny_org
 from SegFormer.models import SegFormer_B0
 import segmentation_models as sm
 import albumentations as A
@@ -96,15 +94,9 @@ def augment_data(image, mask):
 # Wrap the augmentation function for TensorFlow
 def tf_augment_data(image, mask):
     aug_img, aug_mask = tf.numpy_function(func=augment_data, inp=[image, mask], Tout=[tf.uint8, tf.uint8])
-    aug_img.set_shape((256, 256, 3))
-    aug_mask.set_shape((256, 256, 1))
     return aug_img, aug_mask
 
 def _normalize(X_batch, y_batch):
-    # For PSPNet only
-    X_batch = tf.image.resize(X_batch, (256, 256))
-    y_batch = tf.image.resize(y_batch, (256, 256))
-
     X_batch = tf.cast(X_batch, tf.float32)
     y_batch = tf.cast(y_batch, tf.float32)
     return X_batch, y_batch
@@ -125,27 +117,26 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(filename='training.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
-teacher_checkpoint_path = "./weights/best_model3/cp.weights.h5"
-student_checkpoint_path = "./weights/offline_distill/cp.segformer_student1.h5"
+teacher_checkpoint_path = "./weights/best_performance_model/cp.weights.h5"
+student_pretrain_path = "./pretrain_weights/segformer_B0/cp.weights.h5"
 
 # Build two student models
 input_shape = (256, 256, 3)
 num_classes = 5
-teacher = upernet_convnext_tiny.UPerNet(input_shape=input_shape, num_classes=num_classes)
+teacher = upernet_convnext_tiny_org.UPerNet(input_shape=input_shape, num_classes=num_classes)
 student =  SegFormer_B0(input_shape = (256,256,3), num_classes = 5)
 
 teacher.load_weights(teacher_checkpoint_path)
-# student.load_weights(student_checkpoint_path)
-
-# Assuming UPerNetConvnext and UPerNet are defined somewhere
+student.load_weights(student_pretrain_path)
 
 class KLDivergenceLoss(tf.keras.losses.Loss):
-    def __init__(self, name="kl_divergence_loss"):
+    def __init__(self, temperature=1, name="kl_divergence_loss"):
         super().__init__(name=name)
+        self.temperature = temperature
 
     def call(self, y_true, y_pred):
-        y_true = tf.keras.backend.clip(y_true, 1e-10, 1)
-        y_pred = tf.keras.backend.clip(y_pred, 1e-10, 1)
+        y_true = tf.keras.backend.softmax(y_true / self.temperature)
+        y_pred = tf.keras.backend.softmax(y_pred / self.temperature)
         return tf.keras.backend.sum(y_true * tf.keras.backend.log(y_true / y_pred), axis=-1)
 
 dice_loss = sm.losses.DiceLoss() 
@@ -153,8 +144,6 @@ focal_loss = sm.losses.CategoricalFocalLoss()
 total_loss = dice_loss + (2 * focal_loss)
 kl_loss = KLDivergenceLoss()
 
-
-# Custom combined loss function
 # Custom combined loss function
 def custom_combined_loss(y_true, student_pred, teacher_pred):
     
@@ -176,7 +165,7 @@ for epoch in range(epochs):
     student_epoch_iou = []
 
     for step, (images_orig, labels_orig) in enumerate(train_dataset):
-        # print(f"step {step}")
+        sys.stdout.write(f"step {step} ")
         with tf.GradientTape(persistent=True) as tape:
 
             # Forward pass through student with original dataset
@@ -186,7 +175,7 @@ for epoch in range(epochs):
             # Compute losses
             loss = custom_combined_loss(labels_orig, student_pred, teacher_pred)
 
-            # print(f"Loss: {loss}")
+            sys.stdout.write(f"Loss: {loss} \n")
 
 
         # Compute gradients and update weights for both models
@@ -231,7 +220,4 @@ for epoch in range(epochs):
         logging.info(f"New best validation loss: {val_mean_loss}. Saving the weights")
         # Save the best weights
         student.set_weights(best_weights_student)
-        student.save_weights('./weights/offline_distill/cp.segformer_student1.h5')
-
-        
-
+        student.save_weights('./weights/offline_distill/cp.segformer_student_pretrain.h5')

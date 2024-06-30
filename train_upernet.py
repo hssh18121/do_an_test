@@ -18,12 +18,9 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import Image
-from models import upernet_convnext_tiny
+from models import upernet_convnext_tiny_org
 import segmentation_models as sm
 import albumentations as A
-
-# retval = os.getcwd()
-# print( "Thu muc dang lam viec hien tai la %s" % retval)
 
 # Paths to dataset files
 save_train_image_dataset_path = './bk-isut-dataset/train_image_dataset.npy'
@@ -106,38 +103,34 @@ def _normalize(X_batch, y_batch):
 augmented_train_dataset = train_dataset.map(tf_augment_data)
 combined_train_dataset = train_dataset.concatenate(augmented_train_dataset)
 
-print(type(train_dataset))
-print(type(augmented_train_dataset))
-print(type(combined_train_dataset))
-
 train_dataset = combined_train_dataset.batch(16).map(_normalize)
 val_dataset = val_dataset.batch(16).map(_normalize)
 
 # Path to save model checkpoint
-checkpoint_path = "./weights/best_model3/cp.weights.h5"
+checkpoint_path = "./weights/augmented_upernet_tiny_org/cp.weights.h5"
 
 # Pretrain path
-pretrain_path = "./weights/imgnet_augmented_upernet_convnext_tiny/cp.weights.h5"
+pretrain_path = "./weights/augmented_upernet_tiny_org/cp.weights.h5"
 
-dice_loss = sm.losses.DiceLoss(class_weights=[0.1, 0.1, 0.1, 0.45, 0.25]) 
-focal_loss = sm.losses.CategoricalFocalLoss(gamma=5.0)
+dice_loss = sm.losses.DiceLoss() 
+focal_loss = sm.losses.CategoricalFocalLoss()
 total_loss = dice_loss + (2 * focal_loss)
 
 # Initialize and compile the model
-model = upernet_convnext_tiny.UPerNet(input_shape=(256, 256, 3), num_classes=5)
+model = upernet_convnext_tiny_org.UPerNet(input_shape=(256, 256, 3), num_classes=5)
 model.compile('Adam', loss=total_loss, metrics=[sm.metrics.iou_score])
 
-model.load_weights(pretrain_path)
+# model.load_weights(pretrain_path)
 
 # Define callbacks
 callbacks = [
-    tf.keras.callbacks.EarlyStopping(patience=40, monitor='val_loss'),
+    # tf.keras.callbacks.EarlyStopping(patience=25, monitor='val_loss'),
     tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                        monitor='val_loss',
                                        save_best_only=True,
                                        save_weights_only=True,
                                        verbose=1),
-    tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=8, min_lr=1e-6, verbose=1)
+    # tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=10, min_lr=1e-6, verbose=1)
 ]
 
 # Train the model
@@ -148,8 +141,6 @@ history = model.fit(
     callbacks=callbacks,
 )
 
-# Load the best weights
-model.load_weights(checkpoint_path)
 
 loss = history.history['loss']
 val_loss = history.history['val_loss']
@@ -161,7 +152,7 @@ plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
 plt.show()
-plt.savefig('./result/best_model3/loss.png')
+plt.savefig('./result/augmented_upernet_tiny_org/loss.png')
 plt.clf()  # Clear the current figure
 
 acc = history.history['iou_score']
@@ -173,4 +164,4 @@ plt.xlabel('Epochs')
 plt.ylabel('Accuracy')
 plt.legend()
 plt.show()
-plt.savefig('./result/best_model3/mean_iou.png')
+plt.savefig('./result/augmented_upernet_tiny_org/mean_iou.png')

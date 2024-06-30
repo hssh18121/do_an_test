@@ -9,7 +9,7 @@ import pandas as pd
 
 import sys
 # Add the parent directory of the 'models' directory to the sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'SegFormer-tf')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'SegFormer')))
 
 import random
 import glob
@@ -21,9 +21,6 @@ from PIL import Image
 from models import SegFormer_B0
 import segmentation_models as sm
 import albumentations as A
-
-# retval = os.getcwd()
-# print( "Thu muc dang lam viec hien tai la %s" % retval)
 
 # Paths to dataset files
 save_train_image_dataset_path = './bk-isut-dataset/train_image_dataset.npy'
@@ -108,10 +105,14 @@ train_dataset = combined_train_dataset.map(_normalize).batch(16)
 val_dataset = val_dataset.batch(16).map(_normalize)
 
 # Path to save model checkpoint
-checkpoint_path = "./weights/augmented_segformer_B0/cp.weights.h5"
+checkpoint_path = "./weights/best_lightweight_model2/cp.weights.h5"
 
 # Pretrain path
-# pretrain_path = "./pretrain_weights/segformer_B5/cp.weights.h5"
+pretrain_path = "./weights/augmented_segformer_B0_with_pretrain/cp.weights.h5"
+
+# dice_loss = sm.losses.DiceLoss() 
+# focal_loss = sm.losses.CategoricalFocalLoss()
+# total_loss = dice_loss + (2 * focal_loss)
 
 dice_loss = sm.losses.DiceLoss() 
 focal_loss = sm.losses.CategoricalFocalLoss()
@@ -121,15 +122,17 @@ total_loss = dice_loss + (2 * focal_loss)
 model = SegFormer_B0(input_shape=(256, 256, 3), num_classes=5)
 model.compile('Adam', loss=total_loss, metrics=[sm.metrics.iou_score])
 
-# model.load_weights(pretrain_path)
+model.load_weights(pretrain_path)
 
 # Define callbacks
 callbacks = [
+    tf.keras.callbacks.EarlyStopping(patience=32, monitor='val_loss'),
     tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                        monitor='val_loss',
                                        save_best_only=True,
                                        save_weights_only=True,
-                                       verbose=1)
+                                       verbose=1),
+    tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=10, min_lr=1e-6, verbose=1)
 ]
 
 # Train the model
@@ -141,7 +144,7 @@ history = model.fit(
 )
 
 # Load the best weights
-model.load_weights(checkpoint_path)
+# model.load_weights(checkpoint_path)
 
 loss = history.history['loss']
 val_loss = history.history['val_loss']
@@ -153,7 +156,7 @@ plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
 plt.show()
-plt.savefig('./result/augmented_segformer_B0/loss.png')
+plt.savefig('./result/best_lightweight_model2/loss.png')
 plt.clf()  # Clear the current figure
 
 acc = history.history['iou_score']
@@ -165,4 +168,4 @@ plt.xlabel('Epochs')
 plt.ylabel('Accuracy')
 plt.legend()
 plt.show()
-plt.savefig('./result/augmented_segformer_B0/mean_iou.png')
+plt.savefig('./result/best_lightweight_model2/mean_iou.png')
