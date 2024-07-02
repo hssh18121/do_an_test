@@ -9,7 +9,6 @@ import pandas as pd
 
 import sys
 # Add the parent directory of the 'models' directory to the sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'SegFormer-tf')))
 
 import random
 import glob
@@ -18,12 +17,10 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import Image
-from models import SegFormer_B0
+# from SegFormer.models import SegFormer_B0
+from Upernet.models import upernet_convnext_tiny_org
 import segmentation_models as sm
 import albumentations as A
-
-# retval = os.getcwd()
-# print( "Thu muc dang lam viec hien tai la %s" % retval)
 
 # Paths to dataset files
 save_train_image_dataset_path = './bk-isut-dataset/train_image_dataset.npy'
@@ -94,6 +91,8 @@ def augment_data(image, mask):
 # Wrap the augmentation function for TensorFlow
 def tf_augment_data(image, mask):
     aug_img, aug_mask = tf.numpy_function(func=augment_data, inp=[image, mask], Tout=[tf.uint8, tf.uint8])
+    aug_img.set_shape((256, 256, 3))
+    aug_mask.set_shape((256, 256, 1))
     return aug_img, aug_mask
 
 def _normalize(X_batch, y_batch):
@@ -108,17 +107,18 @@ train_dataset = combined_train_dataset.map(_normalize).batch(16)
 val_dataset = val_dataset.batch(16).map(_normalize)
 
 # Path to save model checkpoint
-checkpoint_path = "./weights/augmented_segformer_B0_with_pretrain/cp.weights.h5"
+checkpoint_path = "./weights/augmented_upernet_tiny_org_with_pretrain/cp.weights.h5"
 
 # Pretrain path
-pretrain_path = "./pretrain_weights/segformer_B0/cp.weights.h5"
+pretrain_path = "./pretrain_weights/upernet_convnext_tiny_org/cp.weights.h5"
 
 dice_loss = sm.losses.DiceLoss() 
 focal_loss = sm.losses.CategoricalFocalLoss()
 total_loss = dice_loss + (2 * focal_loss)
 
 # Initialize and compile the model
-model = SegFormer_B0(input_shape=(256, 256, 3), num_classes=5)
+# model = SegFormer_B0(input_shape=(256, 256, 3), num_classes=5)
+model = upernet_convnext_tiny_org.UPerNet(input_shape=(256, 256, 3), num_classes=5)
 model.compile('Adam', loss=total_loss, metrics=[sm.metrics.iou_score])
 
 model.load_weights(pretrain_path)
@@ -153,7 +153,7 @@ plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
 plt.show()
-plt.savefig('./result/augmented_segformer_B0_with_pretrain/loss.png')
+plt.savefig('./result/augmented_upernet_tiny_org_with_pretrain/loss.png')
 plt.clf()  # Clear the current figure
 
 acc = history.history['iou_score']
@@ -165,4 +165,4 @@ plt.xlabel('Epochs')
 plt.ylabel('Accuracy')
 plt.legend()
 plt.show()
-plt.savefig('./result/augmented_segformer_B0_with_pretrain/mean_iou.png')
+plt.savefig('./result/augmented_upernet_tiny_org_with_pretrain/mean_iou.png')

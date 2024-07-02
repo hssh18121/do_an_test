@@ -18,7 +18,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import Image
-from models import SegFormer_B0
+from models import SegFormer_B3
 import segmentation_models as sm
 import albumentations as A
 
@@ -105,10 +105,10 @@ train_dataset = combined_train_dataset.map(_normalize).batch(16)
 val_dataset = val_dataset.batch(16).map(_normalize)
 
 # Path to save model checkpoint
-checkpoint_path = "./weights/best_lightweight_model2/cp.weights.h5"
+checkpoint_path = "./weights/augmented_segformer_B3_with_pretrain/cp.weights.h5"
 
 # Pretrain path
-pretrain_path = "./weights/augmented_segformer_B0_with_pretrain/cp.weights.h5"
+pretrain_path = "./weights/augmented_segformer_B3_with_pretrain/cp.weights.h5"
 
 # dice_loss = sm.losses.DiceLoss() 
 # focal_loss = sm.losses.CategoricalFocalLoss()
@@ -119,20 +119,20 @@ focal_loss = sm.losses.CategoricalFocalLoss()
 total_loss = dice_loss + (2 * focal_loss)
 
 # Initialize and compile the model
-model = SegFormer_B0(input_shape=(256, 256, 3), num_classes=5)
+model = SegFormer_B3(input_shape=(256, 256, 3), num_classes=5)
 model.compile('Adam', loss=total_loss, metrics=[sm.metrics.iou_score])
 
 model.load_weights(pretrain_path)
 
 # Define callbacks
 callbacks = [
-    tf.keras.callbacks.EarlyStopping(patience=32, monitor='val_loss'),
+    tf.keras.callbacks.EarlyStopping(patience=25, monitor='val_loss'),
     tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                        monitor='val_loss',
                                        save_best_only=True,
                                        save_weights_only=True,
                                        verbose=1),
-    tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=10, min_lr=1e-6, verbose=1)
+    tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=8, min_lr=1e-6, verbose=1)
 ]
 
 # Train the model
@@ -156,7 +156,7 @@ plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
 plt.show()
-plt.savefig('./result/best_lightweight_model2/loss.png')
+plt.savefig('./result/converge_segformerB3_with_pretrain/loss.png')
 plt.clf()  # Clear the current figure
 
 acc = history.history['iou_score']
@@ -168,4 +168,4 @@ plt.xlabel('Epochs')
 plt.ylabel('Accuracy')
 plt.legend()
 plt.show()
-plt.savefig('./result/best_lightweight_model2/mean_iou.png')
+plt.savefig('./result/converge_segformerB3_with_pretrain/mean_iou.png')

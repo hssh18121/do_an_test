@@ -81,7 +81,7 @@ def get_training_augmentation(height, width):
 
 # Function to apply augmentation
 def augment_data(image, mask):
-    aug = get_training_augmentation(384, 384)(image=image, mask=mask)
+    aug = get_training_augmentation(256, 256)(image=image, mask=mask)
     aug_image = aug['image'].astype(np.uint8)
     aug_mask = aug['mask'].astype(np.uint8)
     return aug_image, aug_mask
@@ -89,14 +89,14 @@ def augment_data(image, mask):
 # Wrap the augmentation function for TensorFlow
 def tf_augment_data(image, mask):
     aug_img, aug_mask = tf.numpy_function(func=augment_data, inp=[image, mask], Tout=[tf.uint8, tf.uint8])
-    aug_img.set_shape((384, 384, 3))
-    aug_mask.set_shape((384, 384, 1))
+    aug_img.set_shape((256, 256, 3))
+    aug_mask.set_shape((256, 256, 1))
     return aug_img, aug_mask
 
 def _normalize(X_batch, y_batch):
     # For PSPNet only
-    X_batch = tf.image.resize(X_batch, (384, 384))
-    y_batch = tf.image.resize(y_batch, (384, 384))
+    X_batch = tf.image.resize(X_batch, (256, 256))
+    y_batch = tf.image.resize(y_batch, (256, 256))
 
     X_batch = tf.cast(X_batch, tf.float32)
     y_batch = tf.cast(y_batch, tf.float32)
@@ -109,7 +109,7 @@ train_dataset = combined_train_dataset.map(_normalize).batch(16)
 val_dataset = val_dataset.batch(16).map(_normalize)
 
 # Path to save model checkpoint
-checkpoint_path = "./weights/augmented_pspnet_resnet18/cp.weights.h5"
+checkpoint_path = "./weights/augmented_fpn_resnet50/cp.weights.h5"
 
 # Pretrain path
 # pretrain_path = "./pretrain_weights/segformer_B5/cp.weights.h5"
@@ -119,24 +119,26 @@ focal_loss = sm.losses.CategoricalFocalLoss()
 total_loss = dice_loss + (2 * focal_loss)
 
 # Initialize and compile the model
-model = sm.PSPNet('resnet18', classes=5, activation='softmax')
+model = sm.FPN('resnet50', classes=5, activation='softmax')
 model.compile('Adam', loss=total_loss, metrics=[sm.metrics.iou_score],)
 
-# model.load_weights(checkpoint_path)
+model.load_weights(checkpoint_path)
 
 # Define callbacks
 callbacks = [
+    tf.keras.callbacks.EarlyStopping(patience=25, monitor='val_loss'),
     tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                        monitor='val_loss',
                                        save_best_only=True,
                                        save_weights_only=True,
-                                       verbose=1)
+                                       verbose=1),
+    tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=8, min_lr=1e-6, verbose=1)
 ]
 
 # Train the model
 history = model.fit(
     train_dataset,
-    epochs=200,
+    epochs=100,
     validation_data=val_dataset,
     callbacks=callbacks,
 )
@@ -154,7 +156,7 @@ plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
 plt.show()
-plt.savefig('./result/augmented_pspnet_resnet18/loss.png')
+plt.savefig('./result/converge_fpn/loss.png')
 plt.clf()  # Clear the current figure
 
 acc = history.history['iou_score']
@@ -166,4 +168,4 @@ plt.xlabel('Epochs')
 plt.ylabel('Accuracy')
 plt.legend()
 plt.show()
-plt.savefig('./result/augmented_pspnet_resnet18/mean_iou.png')
+plt.savefig('./result/converge_fpn/mean_iou.png')

@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import Image
 # from models import SegFormer_B0
-from models import upernet_convnext_tiny
+from models import upernet_convnext_tiny_org
 import segmentation_models as sm
 import albumentations as A
 
@@ -72,7 +72,7 @@ val_dataset = val_dataset.repeat().batch(batch_size)
 
 # Path to save model checkpoint
 # checkpoint_path = "./pretrain_weights/segformer_B0/cp.weights.h5"
-checkpoint_path = "./pretrain_weights/upernet_convnext_tiny/cp.weights.h5"
+checkpoint_path = "./pretrain_weights/upernet_convnext_tiny_org/cp.weights.h5"
 
 # Initialize and compile the model
 
@@ -81,7 +81,7 @@ focal_loss = sm.losses.CategoricalFocalLoss()
 total_loss = dice_loss + (2 * focal_loss)
 
 # model = SegFormer_B0(input_shape=(256, 256, 3), num_classes=5)
-model = upernet_convnext_tiny.UPerNet(input_shape=(256, 256, 3), num_classes=5)
+model = upernet_convnext_tiny_org.UPerNet(input_shape=(256, 256, 3), num_classes=5)
 model.compile('Adam', loss=total_loss, metrics=[sm.metrics.iou_score])
 
 # Define callbacks
@@ -121,7 +121,7 @@ plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
 plt.show()
-plt.savefig('./pretrain_result/upernet_convnext_tiny/loss.png')
+plt.savefig('./pretrain_result/upernet_convnext_tiny_org/loss.png')
 plt.clf()  # Clear the current figure
 
 acc = history.history['iou_score']
@@ -133,4 +133,4 @@ plt.xlabel('Epochs')
 plt.ylabel('Accuracy')
 plt.legend()
 plt.show()
-plt.savefig('./pretrain_result/upernet_convnext_tiny/mean_iou.png')
+plt.savefig('./pretrain_result/upernet_convnext_tiny_org/mean_iou.png')

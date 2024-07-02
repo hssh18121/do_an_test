@@ -18,7 +18,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import Image
-from models import upernet_convnext_tiny_org
+from models import upernet_convnext_base_org
 import segmentation_models as sm
 import albumentations as A
 
@@ -107,36 +107,36 @@ train_dataset = combined_train_dataset.batch(16).map(_normalize)
 val_dataset = val_dataset.batch(16).map(_normalize)
 
 # Path to save model checkpoint
-checkpoint_path = "./weights/augmented_upernet_tiny_org/cp.weights.h5"
+checkpoint_path = "./weights/augmented_upernet_base_org_converge/cp.weights.h5"
 
 # Pretrain path
-pretrain_path = "./weights/augmented_upernet_tiny_org/cp.weights.h5"
+pretrain_path = "./weights/augmented_upernet_base_org/cp.weights.h5"
 
 dice_loss = sm.losses.DiceLoss() 
 focal_loss = sm.losses.CategoricalFocalLoss()
 total_loss = dice_loss + (2 * focal_loss)
 
 # Initialize and compile the model
-model = upernet_convnext_tiny_org.UPerNet(input_shape=(256, 256, 3), num_classes=5)
+model = upernet_convnext_base_org.UPerNet(input_shape=(256, 256, 3), num_classes=5)
 model.compile('Adam', loss=total_loss, metrics=[sm.metrics.iou_score])
 
-# model.load_weights(pretrain_path)
+model.load_weights(pretrain_path)
 
 # Define callbacks
 callbacks = [
-    # tf.keras.callbacks.EarlyStopping(patience=25, monitor='val_loss'),
+    tf.keras.callbacks.EarlyStopping(patience=25, monitor='val_loss'),
     tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                        monitor='val_loss',
                                        save_best_only=True,
                                        save_weights_only=True,
                                        verbose=1),
-    # tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=10, min_lr=1e-6, verbose=1)
+    tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=8, min_lr=1e-6, verbose=1)
 ]
 
 # Train the model
 history = model.fit(
     train_dataset,
-    epochs=200,
+    epochs=100,
     validation_data=val_dataset,
     callbacks=callbacks,
 )
@@ -152,7 +152,7 @@ plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
 plt.show()
-plt.savefig('./result/augmented_upernet_tiny_org/loss.png')
+plt.savefig('./result/converge_upernet_base/loss.png')
 plt.clf()  # Clear the current figure
 
 acc = history.history['iou_score']
@@ -164,4 +164,4 @@ plt.xlabel('Epochs')
 plt.ylabel('Accuracy')
 plt.legend()
 plt.show()
-plt.savefig('./result/augmented_upernet_tiny_org/mean_iou.png')
+plt.savefig('./result/converge_upernet_base/mean_iou.png')
