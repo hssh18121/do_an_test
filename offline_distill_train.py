@@ -118,7 +118,7 @@ logging.basicConfig(filename='training.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 teacher_checkpoint_path = "./weights/best_performance_model/cp.weights.h5"
-student_pretrain_path = "./pretrain_weights/segformer_B0/cp.weights.h5"
+student_pretrain_path = "./weights/offline_distill/cp.segformer_student_pretrain.h5"
 
 # Build two student models
 input_shape = (256, 256, 3)
@@ -153,6 +153,8 @@ def custom_combined_loss(y_true, student_pred, teacher_pred):
 
 # Optimizers
 optimizer = tf.keras.optimizers.Adam()
+lr_patience = 0
+total_patience = 0
 
 
 # Define a custom training loop
@@ -165,7 +167,7 @@ for epoch in range(epochs):
     student_epoch_iou = []
 
     for step, (images_orig, labels_orig) in enumerate(train_dataset):
-        sys.stdout.write(f"step {step} ")
+        # sys.stdout.write(f"step {step} ")
         with tf.GradientTape(persistent=True) as tape:
 
             # Forward pass through student with original dataset
@@ -175,7 +177,7 @@ for epoch in range(epochs):
             # Compute losses
             loss = custom_combined_loss(labels_orig, student_pred, teacher_pred)
 
-            sys.stdout.write(f"Loss: {loss} \n")
+            # sys.stdout.write(f"Loss: {loss} \n")
 
 
         # Compute gradients and update weights for both models
@@ -214,10 +216,23 @@ for epoch in range(epochs):
 
     # Check for the lowest validation loss and save the weights
     if val_mean_loss < best_val_loss:
+        lr_patience = 0
+        total_patience = 0
         best_val_loss = val_mean_loss
         best_weights_student = student.get_weights()
         print(f"New best validation loss of student: {val_mean_loss}. Saving the weights")
         logging.info(f"New best validation loss: {val_mean_loss}. Saving the weights")
         # Save the best weights
         student.set_weights(best_weights_student)
-        student.save_weights('./weights/offline_distill/cp.segformer_student_pretrain.h5')
+        student.save_weights('./weights/offline_distill/cp.segformer_student_pretrain_converge.h5')
+    else: 
+        lr_patience += 1
+        total_patience += 1
+        if lr_patience == 8:
+           new_lr = optimizer.learning_rate / 2
+           optimizer.learning_rate.assign(new_lr)
+           print(f"Reduce lr by 2. new lr: {new_lr}")
+
+    if total_patience == 25:
+        print("Result not improving after 25 epochs. Abort training")
+        break
