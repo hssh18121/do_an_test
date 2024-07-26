@@ -107,18 +107,27 @@ train_dataset = combined_train_dataset.batch(16).map(_normalize)
 val_dataset = val_dataset.batch(16).map(_normalize)
 
 # Path to save model checkpoint
-checkpoint_path = "./weights/best_model/cp.weights.h5"
+checkpoint_path = "./weights/augmented_upernet_tiny_org_with_pretrain_lr_half/cp.weights.h5"
 
 # Pretrain path
-pretrain_path = "./weights/augmented_upernet_tiny_org_with_pretrain/cp.weights.h5"
+pretrain_path = "./pretrain_weights/upernet_convnext_tiny_org/cp.weights.h5"
 
-dice_loss = sm.losses.DiceLoss() 
-focal_loss = sm.losses.CategoricalFocalLoss()
-total_loss = dice_loss + (2 * focal_loss)
+# dice_loss = sm.losses.DiceLoss(class_weights=[0.225, 0.1, 0.225, 0.225, 0.225]) 
+focal_loss = sm.losses.CategoricalFocalLoss(gamma=5.0)
+# total_loss = dice_loss + (2 * focal_loss)
+total_loss = focal_loss
+
+from tensorflow.keras.optimizers import Adam
 
 # Initialize and compile the model
 model = upernet_convnext_tiny_org.UPerNet(input_shape=(256, 256, 3), num_classes=5)
-model.compile('Adam', loss=total_loss, metrics=[sm.metrics.iou_score])
+optimizer = Adam(learning_rate=0.001)
+model.compile(optimizer=optimizer, loss=total_loss, metrics=[sm.metrics.iou_score])
+
+
+# for layer in model.layers:
+#         if not layer.name.startswith('convnext'):
+#             layer.trainable = False
 
 model.load_weights(pretrain_path)
 
@@ -152,7 +161,7 @@ plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
 plt.show()
-plt.savefig('./result/best_model/loss.png')
+plt.savefig('./result/augmented_upernet_tiny_org_with_pretrain_lr_half/loss.png')
 plt.clf()  # Clear the current figure
 
 acc = history.history['iou_score']
@@ -164,4 +173,4 @@ plt.xlabel('Epochs')
 plt.ylabel('Accuracy')
 plt.legend()
 plt.show()
-plt.savefig('./result/best_model/mean_iou.png')
+plt.savefig('./result/augmented_upernet_tiny_org_with_pretrain_lr_half/mean_iou.png')

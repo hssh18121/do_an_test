@@ -50,6 +50,10 @@ def UPerNet(input_shape=(512, 512, 3), num_classes=21):
     C3 = backbone.get_layer("convnext_tiny_stage_1_block_2_layernorm").output
     C4 = backbone.get_layer("convnext_tiny_stage_2_block_8_layernorm").output
     C5 = backbone.get_layer("convnext_tiny_stage_3_block_2_layernorm").output
+
+    # Freeze pretrained layers
+    # for layer in backbone.layers:
+    #     layer.trainable = False
     
     print([C2, C3, C4, C5])
 

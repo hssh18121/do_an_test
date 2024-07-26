@@ -117,8 +117,8 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(filename='training.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
-teacher_checkpoint_path = "./weights/best_performance_model/cp.weights.h5"
-student_pretrain_path = "./weights/offline_distill/cp.segformer_student_pretrain.h5"
+teacher_checkpoint_path = "./weights/best_model/cp.weights.h5"
+student_pretrain_path = "./weights/offline_distill/cp.segformer_student_converge_with_best_model.h5"
 
 # Build two student models
 input_shape = (256, 256, 3)
@@ -224,7 +224,7 @@ for epoch in range(epochs):
         logging.info(f"New best validation loss: {val_mean_loss}. Saving the weights")
         # Save the best weights
         student.set_weights(best_weights_student)
-        student.save_weights('./weights/offline_distill/cp.segformer_student_pretrain_converge.h5')
+        student.save_weights('./weights/offline_distill/cp.segformer_student_converge_with_best_model.h5')
     else: 
         lr_patience += 1
         total_patience += 1
